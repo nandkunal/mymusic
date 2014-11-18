@@ -31,12 +31,13 @@ def home():
     return locals()
 @auth.requires_login()
 def upload():
+
   form  = SQLFORM.factory(
-    Field('music_category_id','integer',requires=IS_IN_DB(db,db.t_music_category)),
-    Field('artists','text'),
-    Field('upload_datetime','datetime'),
-    Field('file_url','text'),
-    Field('track_desc','text')
+    Field('Music Category','integer',requires=IS_IN_DB(db,db.t_music_category)),
+    Field('Artist','text'),
+    Field('Timestamp','datetime'),
+    Field('Audio File','upload'),
+    Field('Description','text')
   )
   return dict(form=form)
 
