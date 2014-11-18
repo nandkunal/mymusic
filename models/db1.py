@@ -8,25 +8,26 @@ db.define_table('t_music_category',
     migrate=False)
 
 #--------
-db.define_table('t_upload_share_likes',
-    Field('id','integer'),
-    Field('upload_id','integer'),
-    Field('count_likes','integer'),
-    Field('count_shares','integer'),
-    migrate=False)
-
 #--------
 db.define_table('t_uploads',
     Field('id','integer'),
-    Field('user_id','integer'),
-    Field('music_category_id','integer'),
+    Field('user_id','integer',requires=IS_IN_DB(db,db.auth_user)),
+    Field('music_category_id','integer',requires=IS_IN_DB(db,db.t_music_category)),
     Field('artists','text'),
     Field('upload_datetime','datetime'),
-    Field('file_url','string'),
+    Field('file_url','text'),
     Field('track_desc','text'),
     migrate=False)
 
 #--------
+db.define_table('t_upload_share_likes',
+    Field('id','integer'),
+    Field('upload_id','integer',requires=IS_IN_DB(db,db.t_uploads)),
+    Field('count_likes','integer'),
+    Field('count_shares','integer'),
+    migrate=False)
+
+
 db.define_table('t_users',
     Field('id','integer'),
     Field('first_name','string'),

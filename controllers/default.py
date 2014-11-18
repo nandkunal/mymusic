@@ -20,7 +20,25 @@ def index():
     response.flash = T("Welcome to My Music!")
     #return dict(form=SQLFORM.factory(Field('name')).process())
     return dict()
+@auth.requires_login()
+def home():
+    response.flash = T("Welcome to My Music!")
+    rows = db(db.t_uploads).select()
+    if(len(rows)==0):
+        message="You haven't uploaded any files"
 
+
+    return locals()
+@auth.requires_login()
+def upload():
+  form  = SQLFORM.factory(
+    Field('music_category_id','integer',requires=IS_IN_DB(db,db.t_music_category)),
+    Field('artists','text'),
+    Field('upload_datetime','datetime'),
+    Field('file_url','text'),
+    Field('track_desc','text')
+  )
+  return dict(form=form)
 
 def user():
     """

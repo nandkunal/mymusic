@@ -12,7 +12,7 @@ response.subtitle = 'Upload, Listen and Share Music & Audio Files'
 
 ## read more at http://dev.w3.org/html5/markup/meta.name.html
 response.meta.author = 'Kunal Khaware <you@example.com>'
-response.meta.keywords = 'Upload, Listen and Share Music & Audio Files'
+response.meta.keywords = 'Upload and Share Music & Audio Files'
 response.meta.generator = 'Share Music'
 
 ## your http://google.com/analytics id
@@ -23,11 +23,11 @@ response.google_analytics_id = None
 #########################################################################
 
 response.menu = [
-    (T('Home'), False, URL('default', 'index'), []),
+    (T('Home'), False, URL('default', 'home'), []),
     (T('Music'), False, URL('default', 'music'), []),
     (T('People'), False, URL('default', 'people'), []),
     (T('Upload'), False, URL('default', 'upload'), []),
-    (T('Login'), False, URL('default', 'login'), [])
+
 
 ]
 DEVELOPMENT_MENU = True
