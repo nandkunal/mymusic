@@ -23,8 +23,16 @@ def index():
 @auth.requires_login()
 def home():
     response.flash = T("Welcome to My Music!")
+    fields = (db.t_uploads.music_category_id, db.t_uploads.artists, db.t_uploads.upload_datetime, db.t_uploads.file_url)
+     #Define headers as tuples/dictionaries
+    headers = {'t_uploads.music_category_id':   'Category',
+           't_uploads.artists': 'Artist',
+           't_uploads.upload_datetime': 'Uploaded Date',
+           't_uploads.file_url': 'File' }
+    db.t_uploads.id.readable=False
+
     query = (db.t_uploads.user_id==session['auth']['user']['id'])
-    grid = SQLFORM.grid(query,editable=False)
+    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)
     return dict(grid=grid)
 
     #return locals()
