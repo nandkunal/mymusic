@@ -17,7 +17,7 @@ response.meta.generator = 'Share Music'
 
 ## your http://google.com/analytics id
 response.google_analytics_id = None
-
+response.copyright_text='SCE'
 #########################################################################
 ## this is the main application menu add/remove items as required
 #########################################################################

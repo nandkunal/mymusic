@@ -23,12 +23,11 @@ def index():
 @auth.requires_login()
 def home():
     response.flash = T("Welcome to My Music!")
-    rows = db(db.t_uploads).select()
-    if(len(rows)==0):
-        message="You haven't uploaded any files"
+    query = (db.t_uploads.user_id==session['auth']['user']['id'])
+    grid = SQLFORM.grid(query,editable=False)
+    return dict(grid=grid)
 
-
-    return locals()
+    #return locals()
 @auth.requires_login()
 def upload():
 
@@ -47,31 +46,18 @@ def upload():
   return dict(form=form)
 @auth.requires_login()
 def music():
-    rows = db(db.t_uploads).select()
-    if(len(rows)==0):
-        message="No music yet. Please upload some"
-    else:
-        message="Here we have our music list"
+    query = (db.t_uploads)
+    grid = SQLFORM.grid(query,editable=False)
+    return dict(grid=grid)
 
-
-
-    return locals()
 
 
 @auth.requires_login()
 def people():
 
-    ppl_list=[]
-    count=0
-    for row in db(db.auth_user).select():
-        count=count+1;
-        user_details={'No.':count,'User Name':'0'}
-        user_details['User Name']=row.first_name+" "+row.last_name
-        user_details['No.']=count;
-        ppl_list.append(user_details)
-
-
-    return locals()
+    query = (db.auth_user)
+    grid = SQLFORM.grid(query,editable=False)
+    return dict(grid=grid)
 def user():
     """
     exposes:
