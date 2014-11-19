@@ -23,17 +23,17 @@ def index():
 @auth.requires_login()
 def home():
     response.flash = T("Welcome to My Music!")
+    #userid=2#session['auth']['user']['id']
     fields = (db.t_music_category.cat_name, db.t_uploads.artists, db.t_uploads.upload_datetime, db.t_uploads.file_url)
      #Define headers as tuples/dictionaries
     headers = {'t_music_category.cat_name':   'Category',
            't_uploads.artists': 'Artist',
            't_uploads.upload_datetime': 'Uploaded Date',
            't_uploads.file_url': 'File' }
-    db.t_uploads.id.readable=False
 
-    query = (db.t_uploads.user_id==session['auth']['user']['id']&(db.t_uploads.music_category_id==db.t_music_category.id) )
+    query = ( db.t_uploads.music_category_id==db.t_music_category.id)
     grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)
-    print grid
+
     return dict(grid=grid)
     #return locals()
 @auth.requires_login()
@@ -55,7 +55,7 @@ def upload():
 @auth.requires_login()
 def music():
     query = (db.t_uploads)
-    grid = SQLFORM.grid(query,editable=False)
+    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False)
     return dict(grid=grid)
 
 
@@ -64,7 +64,7 @@ def music():
 def people():
 
     query = (db.auth_user)
-    grid = SQLFORM.grid(query,editable=False)
+    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False)
     return dict(grid=grid)
 def user():
     """
