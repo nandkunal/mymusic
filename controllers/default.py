@@ -33,14 +33,45 @@ def home():
 def upload():
 
   form  = SQLFORM.factory(
-    Field('Music Category','integer',requires=IS_IN_DB(db,db.t_music_category)),
-    Field('Artist','text'),
+    Field('Music Category','string',requires=IS_IN_DB(db,db.t_music_category.id,'%(cat_name)s',zero=T('Select'))),
+    Field('Artist','text',requires=IS_NOT_EMPTY()),
     Field('Timestamp','datetime'),
-    Field('Audio File','upload'),
+    Field('Audio File','upload',uploadfolder='uploads'),
     Field('Description','text')
-  )
-  return dict(form=form)
 
+  )
+  if form.validate():
+      form.vars.user_id= session['auth']['user']['id']
+      db.t_uploads.insert(user_id=form.vars['user_id'],music_category_id=form.vars['Music Category'],artists=form.vars['Artist'],upload_datetime=form.vars['Timestamp'],file_url=form.vars['Audio File'],track_desc=form.vars['Description'])
+      response.flash = T("File Uploaded Sucessfully")
+  return dict(form=form)
+@auth.requires_login()
+def music():
+    rows = db(db.t_uploads).select()
+    if(len(rows)==0):
+        message="No music yet. Please upload some"
+    else:
+        message="Here we have our music list"
+
+
+
+    return locals()
+
+
+@auth.requires_login()
+def people():
+
+    ppl_list=[]
+    count=0
+    for row in db(db.auth_user).select():
+        count=count+1;
+        user_details={'No.':count,'User Name':'0'}
+        user_details['User Name']=row.first_name+" "+row.last_name
+        user_details['No.']=count;
+        ppl_list.append(user_details)
+
+
+    return locals()
 def user():
     """
     exposes:
