@@ -31,7 +31,7 @@ def home():
            't_uploads.upload_datetime': 'Uploaded Date',
            't_uploads.file_url': 'File' }
 
-    query = ( db.t_uploads.music_category_id==db.t_music_category.id)
+    query=((db.t_uploads.user_id==auth.user.id) & (db.t_uploads.music_category_id==db.t_music_category.id))
     grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)
 
     return dict(grid=grid)
