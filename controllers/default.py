@@ -57,8 +57,8 @@ def music():
            't_uploads.artists': 'Artist',
            'auth_user.first_name': 'User',
            't_uploads.file_url': 'File' }
-
-    query=((db.t_uploads.user_id==auth.user.id) & (db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_uploads.user_id))
+    #links=A(_href=URL("http://localhost:8000/mymusic/default/"))
+    query=((db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_uploads.user_id))
     grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)
 
     return dict(grid=grid)
@@ -74,6 +74,33 @@ def people():
 
     query=(db.auth_user.id==db.t_uploads.user_id)
     grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,groupby=db.auth_user.id)
+    return dict(grid=grid)
+
+@auth.requires_login()
+def preference():
+    form  = SQLFORM.factory(
+    Field('Music Category','string',requires=IS_IN_DB(db,db.t_music_category.id,'%(cat_name)s',zero=T('Select'))),
+    Field('Artist','text',requires=IS_NOT_EMPTY()),
+
+    )
+    if form.validate():
+      form.vars.user_id= session['auth']['user']['id']
+      db.t_users_music_taste.insert(user_id=form.vars['user_id'],music_category_id=form.vars['Music Category'],artists=form.vars['Artist'])
+      response.flash = T("Preferences Added Sucessfully")
+
+    return dict(form=form)
+
+@auth.requires_login()
+def recommendation():
+    fields = (db.auth_user.first_name,db.t_music_category.cat_name, db.t_uploads.artists, db.t_uploads.file_url)
+    headers = {'t_music_category.cat_name':   'Category',
+           't_uploads.artists': 'Artist',
+           'auth_user.first_name': 'User',
+           't_uploads.file_url': 'File' }
+
+    query=((db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_users_music_taste.user_id)&(db.t_music_category.id==db.t_users_music_taste.music_category_id)|(db.t_uploads.artists==db.t_users_music_taste.artists))
+    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)
+
     return dict(grid=grid)
 def user():
     """

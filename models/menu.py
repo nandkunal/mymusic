@@ -17,7 +17,7 @@ response.meta.generator = 'Share Music'
 
 ## your http://google.com/analytics id
 response.google_analytics_id = None
-response.copyright_text='SCE'
+response.copyright_text='CSE505[SCE]'
 #########################################################################
 ## this is the main application menu add/remove items as required
 #########################################################################
@@ -27,7 +27,8 @@ response.menu = [
     (T('Music'), False, URL('default', 'music'), []),
     (T('People'), False, URL('default', 'people'), []),
     (T('Upload'), False, URL('default', 'upload'), []),
-
+    (T('Preference'), False, URL('default', 'preference'), []),
+    (T('Recommendations'),False,URL('default','recommendation'),[])
 
 ]
 DEVELOPMENT_MENU = True
