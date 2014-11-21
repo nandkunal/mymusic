@@ -1,0 +1,697 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.TypeError'> 'function' object is not iterable"
+p3
+sS'layer'
+p4
+S'C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers/default.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# this file is released under public domain and you can use without limitations\n\n#########################################################################\n## This is a sample controller\n## - index is the default action of any application\n## - user is required for authentication and authorization\n## - download is for downloading files uploaded in the db (does streaming)\n## - api is an example of Hypermedia API support and access control\n#########################################################################\n\ndef index():\n    """\n    example action using the internationalization operator T and flash\n    rendered by views/default/index.html or views/generic.html\n\n    if you need a simple wiki simply replace the two lines below with:\n    return auth.wiki()\n    """\n    response.flash = T("Welcome to My Music!")\n    #return dict(form=SQLFORM.factory(Field(\'name\')).process())\n    return dict()\n@auth.requires_login()\ndef home():\n    response.flash = T("Welcome to My Music!")\n    fields = (db.t_music_category.cat_name, db.t_uploads.artists, db.t_uploads.upload_datetime, db.t_uploads.file_url)\n    headers = {\'t_music_category.cat_name\':   \'Category\',\n           \'t_uploads.artists\': \'Artist\',\n           \'t_uploads.upload_datetime\': \'Uploaded Date\',\n           \'t_uploads.file_url\': \'File\' }\n\n    query=((db.t_uploads.user_id==auth.user.id) & (db.t_uploads.music_category_id==db.t_music_category.id))\n    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,orderby=~db.t_uploads.upload_datetime)\n\n    return dict(grid=grid)\n    #return locals()\n@auth.requires_login()\ndef upload():\n\n  form  = SQLFORM.factory(\n    Field(\'Music Category\',\'string\',requires=IS_IN_DB(db,db.t_music_category.id,\'%(cat_name)s\',zero=T(\'Select\'))),\n    Field(\'Artist\',\'text\',requires=IS_NOT_EMPTY()),\n    Field(\'Timestamp\',\'datetime\'),\n    Field(\'Audio File\',\'upload\',uploadfolder=\'uploads\'),\n    Field(\'Description\',\'text\')\n\n  )\n  if form.validate():\n      form.vars.user_id= session[\'auth\'][\'user\'][\'id\']\n      db.t_uploads.insert(user_id=form.vars[\'user_id\'],music_category_id=form.vars[\'Music Category\'],artists=form.vars[\'Artist\'],upload_datetime=form.vars[\'Timestamp\'],file_url=form.vars[\'Audio File\'],track_desc=form.vars[\'Description\'])\n      response.flash = T("File Uploaded Sucessfully")\n  return dict(form=form)\n@auth.requires_login()\ndef music():\n    fields = (db.auth_user.first_name,db.t_music_category.cat_name, db.t_uploads.artists, db.t_uploads.file_url)\n    headers = {\'t_music_category.cat_name\':   \'Category\',\n           \'t_uploads.artists\': \'Artist\',\n           \'auth_user.first_name\': \'User\',\n           \'t_uploads.file_url\': \'File\' }\n    links=lambda row:A(_href=URL("http://localhost:8000/mymusic/default/"))\n    query=((db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_uploads.user_id))\n    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,links=links)\n\n    return dict(grid=grid)\n\n\n\n@auth.requires_login()\ndef people():\n    fields = (db.auth_user.first_name,db.auth_user.email)\n    headers = {\'auth_user.first_name\':   \'User\',\n           \'auth_user.email\': \'Email\',\n            }\n\n    query=(db.auth_user.id==db.t_uploads.user_id)\n    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,groupby=db.auth_user.id)\n    return dict(grid=grid)\n\n@auth.requires_login()\ndef preference():\n    form  = SQLFORM.factory(\n    Field(\'Music Category\',\'string\',requires=IS_IN_DB(db,db.t_music_category.id,\'%(cat_name)s\',zero=T(\'Select\'))),\n    Field(\'Artist\',\'text\',requires=IS_NOT_EMPTY()),\n\n    )\n    if form.validate():\n      form.vars.user_id= session[\'auth\'][\'user\'][\'id\']\n      db.t_users_music_taste.insert(user_id=form.vars[\'user_id\'],music_category_id=form.vars[\'Music Category\'],artists=form.vars[\'Artist\'])\n      response.flash = T("Preferences Added Sucessfully")\n\n    return dict(form=form)\n\n@auth.requires_login()\ndef recommendation():\n    fields = (db.auth_user.first_name,db.t_music_category.cat_name, db.t_uploads.artists, db.t_uploads.file_url)\n    headers = {\'t_music_category.cat_name\':   \'Category\',\n           \'t_uploads.artists\': \'Artist\',\n           \'auth_user.first_name\': \'User\',\n           \'t_uploads.file_url\': \'File\' }\n\n    query=((db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_users_music_taste.user_id)&(db.t_music_category.id==db.t_users_music_taste.music_category_id)|(db.t_uploads.artists==db.t_users_music_taste.artists))\n    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields)\n\n    return dict(grid=grid)\ndef user():\n    """\n    exposes:\n    http://..../[app]/default/user/login\n    http://..../[app]/default/user/logout\n    http://..../[app]/default/user/register\n    http://..../[app]/default/user/profile\n    http://..../[app]/default/user/retrieve_password\n    http://..../[app]/default/user/change_password\n    http://..../[app]/default/user/manage_users (requires membership in\n    use @auth.requires_login()\n        @auth.requires_membership(\'group name\')\n        @auth.requires_permission(\'read\',\'table name\',record_id)\n    to decorate functions that need access control\n    """\n    return dict(form=auth())\n\n\n@cache.action()\ndef download():\n    """\n    allows downloading of uploaded files\n    http://..../[app]/default/download/[filename]\n    """\n    return response.download(request, db)\n\n\ndef call():\n    """\n    exposes services. for example:\n    http://..../[app]/default/call/jsonrpc\n    decorate with @services.jsonrpc the functions to expose\n    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv\n    """\n    return service()\n\n\n@auth.requires_login() \ndef api():\n    """\n    this is example of API with access control\n    WEB2PY provides Hypermedia API (Collection+JSON) Experimental\n    """\n    from gluon.contrib.hypermedia import Collection\n    rules = {\n        \'<tablename>\': {\'GET\':{},\'POST\':{},\'PUT\':{},\'DELETE\':{}},\n        }\n    return Collection(db).process(request,response,rules)\n\nresponse._vars=response._caller(music)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__hash__'
+p12
+S"<method-wrapper '__hash__' of exceptions.TypeError object>"
+p13
+sS'__setattr__'
+p14
+S"<method-wrapper '__setattr__' of exceptions.TypeError object>"
+p15
+sS'__reduce_ex__'
+p16
+S'<built-in method __reduce_ex__ of exceptions.TypeError object>'
+p17
+sS'__getslice__'
+p18
+S"<method-wrapper '__getslice__' of exceptions.TypeError object>"
+p19
+sS'__getitem__'
+p20
+S"<method-wrapper '__getitem__' of exceptions.TypeError object>"
+p21
+sS'__setstate__'
+p22
+S'<built-in method __setstate__ of exceptions.TypeError object>'
+p23
+sS'__reduce__'
+p24
+S'<built-in method __reduce__ of exceptions.TypeError object>'
+p25
+sS'__str__'
+p26
+S"<method-wrapper '__str__' of exceptions.TypeError object>"
+p27
+sS'__format__'
+p28
+S'<built-in method __format__ of exceptions.TypeError object>'
+p29
+sS'__getattribute__'
+p30
+S"<method-wrapper '__getattribute__' of exceptions.TypeError object>"
+p31
+sS'__class__'
+p32
+S"<type 'exceptions.TypeError'>"
+p33
+sS'__unicode__'
+p34
+S'<built-in method __unicode__ of exceptions.TypeError object>'
+p35
+sS'__delattr__'
+p36
+S"<method-wrapper '__delattr__' of exceptions.TypeError object>"
+p37
+sS'__subclasshook__'
+p38
+S'<built-in method __subclasshook__ of type object>'
+p39
+sS'__repr__'
+p40
+S"<method-wrapper '__repr__' of exceptions.TypeError object>"
+p41
+sS'args'
+p42
+S'("\'function\' object is not iterable",)'
+p43
+sS'__dict__'
+p44
+S'{}'
+p45
+sS'__sizeof__'
+p46
+S'<built-in method __sizeof__ of exceptions.TypeError object>'
+p47
+sS'__doc__'
+p48
+S"'Inappropriate argument type.'"
+p49
+sS'__init__'
+p50
+S"<method-wrapper '__init__' of exceptions.TypeError object>"
+p51
+sS'__new__'
+p52
+S'<built-in method __new__ of type object>'
+p53
+ssS'evalue'
+p54
+S"'function' object is not iterable"
+p55
+sS'request'
+p56
+cgluon.html
+XML_unpickle
+p57
+(S's\xfd]\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>mymusic</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-f3fcbe35-be35-4b55-8877-839bfa7a9717<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_mymusic</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>__utma=111872281.1802216596.1398791805.1413880419.1413884921.45; __utmz=111872281.1398791805.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); session_id_mymusic=127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8; session_id_admin=127.0.0.1-f3fcbe35-be35-4b55-8877-839bfa7a9717</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>localhost:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>http://localhost:8000/mymusic/default/recommendation</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/mymusic/default/music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>30020</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>KHAKU01-1W7</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\welcome\\\\&#x27;, &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\admin\\\\&#x27;, &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\mymusic\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x340f828: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;2001:0:9d38:6abd:104d:93b:ce32:8ef5&#x27;, &#x27;192.168.132.1&#x27;, &#x27;192.168.223.1&#x27;, &#x27;192.168.2.6&#x27;, &#x27;fe80::8011:5b3f:187:3b32%17&#x27;, &#x27;fe80::104d:93b:ce32:8ef5%14&#x27;, &#x27;fe80::588f:c33e:e337:6578%13&#x27;, &#x27;fe80::1d0:833c:1eff:a1fa%16&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;KHAKU01-1W7&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>__utma=111872281.1802216596.1398791805.1413880419.1413884921.45; __utmz=111872281.1398791805.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); session_id_mymusic=127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8; session_id_admin=127.0.0.1-f3fcbe35-be35-4b55-8877-839bfa7a9717</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>localhost:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>http://localhost:8000/mymusic/default/recommendation</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>2001:0:9d38:6abd:104d:93b:ce32:8ef5</div></td></tr><tr><td><div>192.168.132.1</div></td></tr><tr><td><div>192.168.223.1</div></td></tr><tr><td><div>KHAKU01-1W7</div></td></tr><tr><td><div>192.168.2.6</div></td></tr><tr><td><div>fe80::8011:5b3f:187:3b32%17</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>fe80::104d:93b:ce32:8ef5%14</div></td></tr><tr><td><div>fe80::588f:c33e:e337:6578%13</div></td></tr><tr><td><div>fe80::1d0:833c:1eff:a1fa%16</div></td></tr><tr><td><div>KHAKU01-1W7.ca.com</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/mymusic/default/music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>30020</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/mymusic/default/music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>KHAKU01-1W7</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.11-stable+timestamp.2014.09.15.23.35.11</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x01CD60D0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x023CEFB8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x0804AE30&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x01CD60D0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x023CEFB8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x0804AE30&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\welcome\\\\&#x27;, &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\admin\\\\&#x27;, &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\mymusic\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x340f828: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;2001:0:9d38:6abd:104d:93b:ce32:8ef5&#x27;, &#x27;192.168.132.1&#x27;, &#x27;192.168.223.1&#x27;, &#x27;192.168.2.6&#x27;, &#x27;fe80::8011:5b3f:187:3b32%17&#x27;, &#x27;fe80::104d:93b:ce32:8ef5%14&#x27;, &#x27;fe80::588f:c33e:e337:6578%13&#x27;, &#x27;fe80::1d0:833c:1eff:a1fa%16&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;KHAKU01-1W7&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>2001:0:9d38:6abd:104d:93b:ce32:8ef5</div></td></tr><tr><td><div>192.168.132.1</div></td></tr><tr><td><div>192.168.223.1</div></td></tr><tr><td><div>KHAKU01-1W7</div></td></tr><tr><td><div>192.168.2.6</div></td></tr><tr><td><div>fe80::8011:5b3f:187:3b32%17</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>fe80::104d:93b:ce32:8ef5%14</div></td></tr><tr><td><div>fe80::588f:c33e:e337:6578%13</div></td></tr><tr><td><div>fe80::1d0:833c:1eff:a1fa%16</div></td></tr><tr><td><div>KHAKU01-1W7.ca.com</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.11-stable+timestamp.2014.09.15.23.35.11</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_sheduler</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2014, 11, 20, 17, 49, 46, 176000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/mymusic/default/music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2014, 11, 20, 12, 19, 46, 176000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uuid</td><td style="vertical-align:top;">:</td><td><div>mymusic/127.0.0.1.2014-11-20.17-49-46.11dca36c-575d-4423-af51-04d52237b095</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x07ECF5B0&gt;</div></td></tr></table></div>'
+tRp58
+sS'frames'
+p59
+(lp60
+(dp61
+S'file'
+p62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\gluon\\restricted.py'
+p63
+sS'dump'
+p64
+(dp65
+sS'lnum'
+p66
+I224
+sS'lines'
+p67
+(dp68
+sS'call'
+p69
+S"(code='# -*- coding: utf-8 -*-\\n# this file is released ...e,rules)\\n\\nresponse._vars=response._caller(music)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}, layer=r'C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers/default.py')"
+p70
+sS'func'
+p71
+S'restricted'
+p72
+sa(dp73
+g62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers\\default.py'
+p74
+sg64
+(dp75
+sg66
+I154
+sg67
+(dp76
+I143
+S'def api():'
+p77
+sI144
+S'    """'
+p78
+sI145
+S'    this is example of API with access control'
+p79
+sI146
+S'    WEB2PY provides Hypermedia API (Collection+JSON) Experimental'
+p80
+sI147
+S'    """'
+p81
+sI148
+S'    from gluon.contrib.hypermedia import Collection'
+p82
+sI149
+S'    rules = {'
+p83
+sI150
+S"        '<tablename>': {'GET':{},'POST':{},'PUT':{},'DELETE':{}},"
+p84
+sI151
+S'        }'
+p85
+sI152
+S'    return Collection(db).process(request,response,rules)'
+p86
+ssg69
+S'()'
+p87
+sg71
+S'<module>'
+p88
+sa(dp89
+g62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\gluon\\globals.py'
+p90
+sg64
+(dp91
+sg66
+I392
+sg67
+(dp92
+sg69
+S'(f=<function music>)'
+p93
+sg71
+S'<lambda>'
+p94
+sa(dp95
+g62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\gluon\\tools.py'
+p96
+sg64
+(dp97
+sg66
+I3439
+sg67
+(dp98
+sg69
+S'(*a=(), **b={})'
+p99
+sg71
+S'f'
+sa(dp100
+g62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers\\default.py'
+p101
+sg64
+(dp102
+S'auth.requires_login'
+p103
+S'<bound method Auth.requires_login of <gluon.tools.Auth object>>'
+p104
+sS'global auth'
+p105
+S'<gluon.tools.Auth object>'
+p106
+ssg66
+I62
+sg67
+(dp107
+I64
+S'    return dict(grid=grid)'
+p108
+sI65
+S''
+sI66
+S''
+sI57
+S"           't_uploads.artists': 'Artist',"
+p109
+sI58
+S"           'auth_user.first_name': 'User',"
+p110
+sI59
+S"           't_uploads.file_url': 'File' }"
+p111
+sI60
+S'    links=lambda row:A(_href=URL("http://localhost:8000/mymusic/default/"))'
+p112
+sI61
+S'    query=((db.t_uploads.music_category_id==db.t_music_category.id) & (db.auth_user.id==db.t_uploads.user_id))'
+p113
+sI62
+S'    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,links=links)'
+p114
+sI63
+S''
+ssg69
+S'()'
+p115
+sg71
+S'music'
+p116
+sa(dp117
+g62
+S'C:\\Softwares-dump\\web2py_win\\web2py\\gluon\\sqlhtml.py'
+p118
+sg64
+(dp119
+sg66
+I2436
+sg67
+(dp120
+sg69
+S"(query=<Query ((t_uploads.music_category_id = t_music_category.id) AND (auth_user.id = t_uploads.user_id))>, fields=[<gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>], field_id=<gluon.dal.Field object>, left=None, headers={'auth_user.first_name': 'User', 't_music_category.cat_name': 'Category', 't_uploads.artists': 'Artist', 't_uploads.file_url': 'File'}, orderby=None, groupby=None, searchable=True, sortable=True, paginate=20, deletable=False, editable=False, details=True, selectable=None, create=False, csv=True, links=<function <lambda>>, links_in_grid=True, upload=<function <lambda>>, args=[], user_signature=True, maxtextlengths={}, maxtextlength=20, onvalidation=None, onfailure=None, oncreate=None, onupdate=None, ondelete=None, sorter_icons=(<gluon.html.XML object>, <gluon.html.XML object>), ui={'button': 'button btn btn-default', 'buttonadd': 'icon plus icon-plus glyphicon glyphicon-plus', 'buttonback': 'icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left', 'buttondelete': 'icon trash icon-trash glyphicon glyphicon-trash', 'buttonedit': 'icon pen icon-pencil glyphicon glyphicon-arrow-pencil', 'buttonexport': 'icon downarrow icon-download glyphicon glyphicon-download', 'buttontable': 'icon rightarrow icon-arrow-right glyphicon glyphicon-arrow-right', 'buttontext': 'buttontext button', 'buttonview': 'icon magnifier icon-zoom-in glyphicon glyphicon-arrow-zoom-in', 'content': '', ...}, showbuttontext=True, _class='web2py_grid', formname='web2py_grid', search_widget=<function <lambda>>, advanced_search=True, ignore_rw=False, formstyle='table3cols', exportclasses=None, formargs={}, createargs={}, editargs={}, viewargs={}, selectable_submit_button='Submit', buttons_placement='right', links_placement='right', noconfirm=False, cache_count=None, client_side_delete=False, ignore_common_filters=None)"
+p121
+sg71
+S'grid'
+p122
+sasS'pyver'
+p123
+S'Python 2.7.6: C:\\Softwares-dump\\web2py_win\\web2py\\web2py.exe (prefix: C:\\Python27)'
+p124
+sS'session'
+p125
+g57
+(S's\xed\x08\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>433944ae-08f8-4911-89a4-c8faffe39bc7</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2014, 11, 20, 17, 49, 46, 176000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember_me</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">email</td><td style="vertical-align:top;">:</td><td><div>nandkunal@gmail.com</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>Kunal</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>1L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Khaware</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">reset_password_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">1</td><td style="vertical-align:top;">:</td><td><div>user_1</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr></table></div>'
+tRp126
+sS'etype'
+p127
+S"<type 'exceptions.TypeError'>"
+p128
+sS'date'
+p129
+S'Thu Nov 20 17:49:46 2014'
+p130
+sS'response'
+p131
+g57
+(S's\r"\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x0816ACA0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_mymusic</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">copyright_text</td><td style="vertical-align:top;">:</td><td><div>CSE505[SCE]</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div>: </div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>table3cols</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="brand" href="http://localhost:8000/mymusic"><b>MyMusic</b>&trade;&nbsp;</a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>Home</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/home</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Music</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/music</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>People</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/people</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Upload</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/upload</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Preference</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/preference</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Recommendations</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/mymusic/default/recommendation</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Kunal Khaware &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Share Music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>Upload and Share Music &amp; Audio Files</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/music/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_mymusic</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;C:\\\\Softwares-dump\\\\web2py_win\\\\web2py\\\\applications\\\\mymusic\\\\sessions\\\\192\\\\0e6\\\\127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8&#x27;, mode &#x27;rb+&#x27; at 0x0809AE38&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\sessions\\127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>4d6efaf1f47c3654fe1ebb50428c052b</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-e9aac2d6-63e2-4d6e-97c2-765fc7013fd8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_mymusic</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>mymusic</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div>Upload, Listen and Share Music &amp; Audio Files</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>My Music</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>default/music.html</div></td></tr></table></div>'
+tRp132
+sS'locals'
+p133
+(dp134
+S'toadd'
+p135
+S'[]'
+p136
+sS'searchable'
+p137
+S'True'
+p138
+sS'sfields'
+p139
+S'[<gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>]'
+p140
+sS'paginate'
+p141
+S'20'
+p142
+sS'prefix'
+p143
+S"'w2p'"
+p144
+sg125
+S"<Storage {'_formkey[no_table/create]': ['4bfdb06...845ad', '45c87846-e05e-45be-83bc-33dfe43c3164']}>"
+p145
+sS'keywords'
+p146
+S"''"
+p147
+sS'query'
+p148
+S'<Query ((t_uploads.music_category_id = t_music_category.id) AND (auth_user.id = t_uploads.user_id))>'
+p149
+sS'tables'
+p150
+S'[<Table auth_user (id,first_name,last_name,email,...stration_key,reset_password_key,registration_id)>, <Table t_uploads (id,user_id,music_category_id,artists,upload_datetime,file_url,track_desc)>, <Table t_music_category (id,cat_name,cat_desc)>]'
+p151
+sS'console'
+p152
+S'<gluon.html.DIV object>'
+p153
+sS'fetch_count'
+p154
+S'<function fetch_count>'
+p155
+sS'logged'
+p156
+S"<Row {'first_name': 'Kunal', 'last_name': 'Khawa...word_key': '', 'registration_key': '', 'id': 1L}>"
+p157
+sS'update_form'
+p158
+S'None'
+p159
+sS'buttons'
+p160
+S'<function buttons>'
+p161
+sS'search_menu'
+p162
+S'<gluon.html.CAT object>'
+p163
+sS'add'
+p164
+S"''"
+p165
+sS'user_signature'
+p166
+g138
+sS'onvalidation'
+p167
+S'None'
+p168
+sS'dbset'
+p169
+S'<Set ((t_uploads.music_category_id = t_music_category.id) AND (auth_user.id = t_uploads.user_id))>'
+p170
+sS'columns'
+p171
+S'[<gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>]'
+p172
+sS'onfailure'
+p173
+S'None'
+p174
+sS'ignore_common_filters'
+p175
+S'None'
+p176
+sS'db'
+p177
+S'<DAL uri="mysql:******@localhost/mymusic">'
+p178
+sS'nrows'
+p179
+S'2L'
+p180
+sS'T'
+S'<gluon.languages.translator object>'
+p181
+sS'gridbutton'
+p182
+S'<function gridbutton>'
+p183
+sS'formname'
+p184
+S"'web2py_grid'"
+p185
+sS'_class'
+p186
+S"'web2py_grid'"
+p187
+sS'fields'
+p188
+S'[<gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>, <gluon.dal.Field object>]'
+p189
+sS'editargs'
+p190
+g45
+sS'upload'
+p191
+S'<function <lambda>>'
+p192
+sS'subquery'
+p193
+S'None'
+p194
+sS't'
+S'<Table t_music_category (id,cat_name,cat_desc)>'
+p195
+sS'referrer'
+p196
+S"'/mymusic/default/music?_signature=931897ff21214a8782058e11e5f2ee545f478930'"
+p197
+sS'oncreate'
+p198
+S'None'
+p199
+sS'marker'
+p200
+S"''"
+p201
+sS'table'
+p202
+S'<Table auth_user (id,first_name,last_name,email,...stration_key,reset_password_key,registration_id)>'
+p203
+sS'client_side_delete'
+p204
+S'False'
+p205
+sS'formstyle'
+p206
+S"'table3cols'"
+p207
+sS'formfooter'
+p208
+S'<gluon.html.DIV object>'
+p209
+sS'create_form'
+p210
+S'None'
+p211
+sS'skeywords_id'
+p212
+S"'w2p_keywords'"
+p213
+sS'maxtextlengths'
+p214
+g45
+sS'url2'
+p215
+S'<function url2>'
+p216
+sS'exportManager'
+p217
+S"{'csv': (<class 'gluon.sqlhtml.ExporterCSV'>, 'CSV', <lazyT 'Comma-separated export of visible column...ar on-screen but this may be slow for many rows'>), 'csv_with_hidden_cols': (<class 'gluon.sqlhtml.ExporterCSV_hidden'>, 'CSV (hidden cols)', <lazyT 'Comma-separated export including columns...es are exported as raw values for faster export'>), 'html': (<class 'gluon.sqlhtml.ExporterHTML'>, 'HTML', <lazyT 'HTML export of visible columns'>), 'json': (<class 'gluon.sqlhtml.ExporterJSON'>, 'JSON', <lazyT 'JSON export of visible columns'>), 'tsv': (<class 'gluon.sqlhtml.ExporterTSV'>, 'TSV (Spreadsheets)', <lazyT 'Spreadsheet-optimised export of tab-separated content, visible columns only. May be slow.'>), 'tsv_with_hidden_cols': (<class 'gluon.sqlhtml.ExporterTSV'>, 'TSV (Spreadsheets, hidden cols)', <lazyT 'Spreadsheet-optimised export of tab-sepa...d content including hidden columns. May be slow'>), 'xml': (<class 'gluon.sqlhtml.ExporterXML'>, 'XML', <lazyT 'XML export of columns shown'>)}"
+p218
+sg42
+S'[]'
+p219
+sS'key'
+p220
+S"'t_uploads.file_url'"
+p221
+sS'links_in_grid'
+p222
+g138
+sS'selectable'
+p223
+S'None'
+p224
+sS'ordermatch'
+p225
+S"'None'"
+p226
+sS'search_form'
+p227
+S'None'
+p228
+sS'showbuttontext'
+p229
+g138
+sS'links_placement'
+p230
+S"'right'"
+p231
+sS'groupby'
+p232
+S'None'
+p233
+sS'tablenames'
+p234
+S"['auth_user', 't_uploads', 't_music_category']"
+p235
+sS'export_type'
+p236
+S'None'
+p237
+sS'exportclasses'
+p238
+S'None'
+p239
+sS'spanel_id'
+p240
+S"'w2p_query_fields'"
+p241
+sS'header'
+p242
+S'<gluon.html.A object>'
+p243
+sS'wenabled'
+p244
+g138
+sS'viewargs'
+p245
+g45
+sS'cache_count'
+p246
+S'None'
+p247
+sS'selectable_submit_button'
+p248
+S"'Submit'"
+p249
+sS'onupdate'
+p250
+S'None'
+p251
+sS'rows'
+p252
+S'None'
+p253
+sS'ignore_rw'
+p254
+g205
+sS'createargs'
+p255
+g45
+sS'create'
+p256
+g205
+sS'tablename'
+p257
+S"'auth_user'"
+p258
+sS'formargs'
+p259
+g45
+sS'linsert'
+p260
+S'<function linsert>'
+p261
+sS'ondelete'
+p262
+S'None'
+p263
+sS'form'
+p264
+S'<gluon.html.CAT object>'
+p265
+sS'left_cols'
+p266
+S'0'
+sS'editable'
+p267
+g205
+sS'deletable'
+p268
+g205
+sS'orderby'
+p269
+S'None'
+p270
+sS'sortable'
+p271
+g138
+sS'f'
+S'<gluon.dal.Field object>'
+p272
+sS'headers'
+p273
+S"{'auth_user.first_name': 'User', 't_music_category.cat_name': 'Category', 't_uploads.artists': 'Artist', 't_uploads.file_url': 'File'}"
+p274
+sS'sfields_id'
+p275
+S"'w2p_query_panel'"
+p276
+sS'headcols'
+p277
+S'[<gluon.html.TH object>, <gluon.html.TH object>, <gluon.html.TH object>, <gluon.html.TH object>]'
+p278
+sS'ui'
+p279
+S"{'button': 'button btn btn-default', 'buttonadd': 'icon plus icon-plus glyphicon glyphicon-plus', 'buttonback': 'icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left', 'buttondelete': 'icon trash icon-trash glyphicon glyphicon-trash', 'buttonedit': 'icon pen icon-pencil glyphicon glyphicon-arrow-pencil', 'buttonexport': 'icon downarrow icon-download glyphicon glyphicon-download', 'buttontable': 'icon rightarrow icon-arrow-right glyphicon glyphicon-arrow-right', 'buttontext': 'buttontext button', 'buttonview': 'icon magnifier icon-zoom-in glyphicon glyphicon-arrow-zoom-in', 'content': '', ...}"
+p280
+sS'error'
+p281
+S'None'
+p282
+sS'k'
+S"'_after_insert'"
+p283
+sS'search_widget'
+p284
+S'<function <lambda>>'
+p285
+sS'view_form'
+p286
+S'None'
+p287
+sS'links'
+p288
+S'<function <lambda>>'
+p289
+sS'sorter_icons'
+p290
+S'(<gluon.html.XML object>, <gluon.html.XML object>)'
+p291
+sS'maxtextlength'
+p292
+S'20'
+p293
+sS'field'
+p294
+S'<gluon.dal.Field object>'
+p295
+sS'details'
+p296
+g138
+sS'csv'
+p297
+g138
+sS'advanced_search'
+p298
+g138
+sS'field_id'
+p299
+S'<gluon.dal.Field object>'
+p300
+sS'noconfirm'
+p301
+g205
+sg131
+S"<Storage {'body': <cStringIO.StringO object at 0...t': 'CSE505[SCE]', 'view': 'default/music.html'}>"
+p302
+sS'url'
+p303
+S'<function url>'
+p304
+sg56
+S"<Storage {'_vars': <Storage {'records': []}>, 'f...p\\\\web2py_win\\\\web2py\\\\applications\\\\mymusic\\\\'}>"
+p305
+sS'buttons_placement'
+p306
+S"'right'"
+p307
+sS'right_cols'
+p308
+S'0'
+sS'order'
+p309
+S"''"
+p310
+sS'left'
+p311
+S'None'
+p312
+sssS'traceback'
+p313
+S'Traceback (most recent call last):\n  File "gluon/restricted.py", line 224, in restricted\n  File "C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers/default.py", line 154, in <module>\n  File "gluon/globals.py", line 392, in <lambda>\n  File "gluon/tools.py", line 3439, in f\n  File "C:\\Softwares-dump\\web2py_win\\web2py\\applications\\mymusic\\controllers/default.py", line 62, in music\n    grid = SQLFORM.grid(query,create=False, deletable=False, editable=False,headers=headers,fields=fields,links=links)\n  File "gluon/sqlhtml.py", line 2436, in grid\nTypeError: \'function\' object is not iterable\n'
+p314
+s.
